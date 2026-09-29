@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Auto-Einmessung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6EAEC; --panel:#F6F7F8; --panel2:#E9EDEF; --line:#C9D1D6; --text:#1A2125; --muted:#5B6870;
+  --amber:#B4650A; --amberInk:#FFFFFF; --blue:#2A7894; --green:#3C8838; --red:#BD3D2C; --grey:#8C979E;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1C2227; --panel:#252C32; --panel2:#2D353C; --line:#3A444C; --text:#E6EAEC; --muted:#98A4AB;
+    --amber:#F2A33A; --amberInk:#1C1408; --blue:#79B6CB; --green:#9ED39A; --red:#EE7565; --grey:#7D8990;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1C2227; --panel:#252C32; --panel2:#2D353C; --line:#3A444C; --text:#E6EAEC; --muted:#98A4AB;
+  --amber:#F2A33A; --amberInk:#1C1408; --blue:#79B6CB; --green:#9ED39A; --red:#EE7565; --grey:#7D8990;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Barlow,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.45}
+h1,h2,.num{font-family:"Barlow Condensed","Arial Narrow",Barlow,system-ui,sans-serif}
+.top{padding:18px 20px 6px;max-width:1400px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px}
+.top h1{margin:0;font-size:2.1rem;font-weight:700;letter-spacing:.01em}
+.top p{margin:0;color:var(--muted);max-width:60ch}
+.grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;padding:12px 20px 28px;max-width:1400px;margin:0 auto}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.side{display:flex;flex-direction:column;gap:14px}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.step h2{margin:0 0 10px;font-size:1.35rem;font-weight:600;display:flex;align-items:center;gap:10px}
+.step h2 .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid var(--amber);color:var(--amber);font-size:1rem}
+label{display:block;margin:10px 0 4px;font-size:.92rem;color:var(--muted)}
+select,input[type=text],input[type=number]{width:100%;font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+input[type=range]{width:100%;accent-color:var(--amber)}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+button{font:inherit;font-weight:600;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer;min-height:44px}
+button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--amber);color:var(--amberInk);border-color:var(--amber)}
+button.on{outline:2px solid var(--amber);outline-offset:1px}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.full{width:100%;margin-top:10px}
+.small{font-size:.86rem;color:var(--muted);margin-top:6px}
+.warn{color:var(--red)}
+.meter{height:10px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);overflow:hidden;margin-top:10px;position:relative}
+.meter i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--green)}
+.meter b{position:absolute;top:0;bottom:0;width:2px;background:var(--text);opacity:.6}
+.file{display:block;margin-top:12px}
+.file input{display:block;margin-top:6px;font-size:.9rem;color:var(--muted);max-width:100%}
+output{font-family:"Barlow Condensed",Barlow,sans-serif;font-weight:600;color:var(--text);float:right}
+#status{margin-top:10px;min-height:1.4em;font-weight:500}
+.list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.list li{display:flex;align-items:center;gap:8px;background:var(--panel2);border-radius:10px;padding:6px 8px 6px 10px}
+.list li input{width:20px;height:20px;accent-color:var(--amber)}
+.list li span{flex:1;font-size:.93rem}
+.list li small{color:var(--muted);display:block;font-size:.8rem}
+.list li button{min-height:34px;padding:4px 10px;font-size:.85rem;font-weight:500}
+.mainCol{display:flex;flex-direction:column;gap:14px;min-width:0}
+.plotWrap{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 10px 6px}
+#plot{display:block;width:100%;height:clamp(260px,44vh,480px)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:.86rem;color:var(--muted);padding:6px 6px 2px}
+.legend span::before{content:"";display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle;background:var(--c)}
+.legend .dash::before{background:repeating-linear-gradient(90deg,var(--c) 0 5px,transparent 5px 8px)}
+.eq{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.eq h2{margin:0;font-size:1.35rem;font-weight:600}
+.eqHead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.eqHead .row{flex:0 0 auto}
+.bankScroll{overflow-x:auto;margin-top:12px;padding-bottom:4px}
+.bank{display:grid;grid-template-columns:repeat(var(--nb,13),minmax(52px,1fr));gap:6px;min-width:max-content}
+.band{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--panel2);border-radius:12px;padding:8px 4px}
+.band .v{font-size:1.9rem;font-weight:700;line-height:1;min-width:2.4ch;text-align:center;font-variant-numeric:tabular-nums}
+.band .v.pos{color:var(--amber)}
+.band .v.neg{color:var(--blue)}
+.track{position:relative;width:10px;height:110px;border-radius:5px;background:var(--bg)}
+.track::after{content:"";position:absolute;left:-5px;right:-5px;top:50%;height:2px;margin-top:-1px;background:var(--line)}
+.track i{position:absolute;left:0;right:0;border-radius:5px}
+.band .b{display:flex;gap:4px}
+.band .b button{min-height:36px;width:24px;padding:0;font-size:1.1rem;font-weight:600}
+.band .f{font-family:"Barlow Condensed",Barlow,sans-serif;font-size:1rem;font-weight:600;color:var(--muted)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 16px}
+summary{cursor:pointer;font-weight:600;min-height:32px;display:flex;align-items:center}
+details ol{margin:6px 0 4px;padding-left:1.3em;max-width:72ch}
+details li{margin:4px 0}
+@media (prefers-reduced-motion:no-preference){.track i{transition:height .25s ease,top .25s ease,bottom .25s ease}}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Auto-Einmessung</h1>
+  <p>Frequenzgang am Hörplatz messen, mehrere Positionen mitteln und direkt als Werte für den 13-Band-EQ ablesen.</p>
+</header>
+
+<main class="grid">
+  <aside class="side">
+    <section class="step">
+      <h2><span class="n num">1</span>Mikrofon</h2>
+      <button id="btnMic" class="primary full">Mikrofon aktivieren</button>
+      <div class="small" id="micStatus" role="status" aria-live="polite"></div>
+      <label for="inSel">Eingang</label>
+      <select id="inSel" disabled><option>Erst Mikrofon aktivieren</option></select>
+      <div class="meter" aria-hidden="true"><i id="meterBar"></i><b id="meterHold"></b></div>
+      <div class="small" id="meterTxt">Eingangspegel: –</div>
+      <label class="file">Kalibrierdatei des Mikros
+        <input type="file" id="calFile" accept=".txt,.cal,.frd,.csv,text/plain">
+      </label>
+      <div class="small" id="calInfo">Keine Kalibrierung geladen</div>
+    </section>
+
+    <section class="step">
+      <h2><span class="n num">2</span>Messen</h2>
+      <label for="lvl">Signalpegel <output id="lvlOut"></output></label>
+      <input type="range" id="lvl" min="-40" max="-6" step="1">
+      <button id="btnNoise" class="full">Rosa Rauschen zum Einpegeln</button>
+      <div class="row" style="margin-top:4px">
+        <div>
+          <label for="dur">Sweep-Dauer</label>
+          <select id="dur"><option value="3">3 s</option><option value="6">6 s</option><option value="10">10 s</option></select>
+        </div>
+        <div>
+          <label for="pos">Position</label>
+          <input type="text" id="pos" placeholder="z. B. Kopf Mitte">
+        </div>
+      </div>
+      <button id="btnMeasure" class="primary full">Messung starten</button>
+      <div id="status" role="status" aria-live="polite"></div>
+      <ul class="list" id="measList"></ul>
+      <button id="btnClear" class="full" hidden>Alle Messungen löschen</button>
+    </section>
+
+    <section class="step">
+      <h2><span class="n num">3</span>Zielkurve</h2>
+      <label for="bass">Bassanhebung unter 100 Hz <output id="bassOut"></output></label>
+      <input type="range" id="bass" min="0" max="12" step="0.5">
+      <label for="tilt">Höhenabfall bis 20 kHz <output id="tiltOut"></output></label>
+      <input type="range" id="tilt" min="0" max="8" step="0.5">
+      <div class="row" style="margin-top:10px">
+        <button id="preFlat">Linear</button>
+        <button id="preCar">Auto typisch</button>
+      </div>
+      <label for="maxBoost">Maximale EQ-Anhebung <output id="maxBoostOut"></output></label>
+      <input type="range" id="maxBoost" min="0" max="9" step="1">
+      <label for="smooth">Glättung</label>
+      <select id="smooth"><option value="3">1/3 Oktave</option><option value="6">1/6 Oktave</option><option value="12">1/12 Oktave</option></select>
+    </section>
+  </aside>
+
+  <div class="mainCol">
+    <div class="plotWrap">
+      <canvas id="plot" aria-label="Frequenzgang-Diagramm"></canvas>
+      <div class="legend">
+        <span style="--c:var(--grey)">Einzelmessungen</span>
+        <span style="--c:var(--amber)">Mittelwert</span>
+        <span class="dash" style="--c:var(--blue)">Zielkurve</span>
+        <span style="--c:var(--green)">Erwartet mit EQ</span>
+      </div>
+    </div>
+
+    <section class="eq">
+      <div class="eqHead">
+        <h2>So stellst du den EQ am Radio ein</h2>
+        <div class="row">
+          <button id="btnAuto">Neu berechnen</button>
+          <button id="btnZero">Alles auf 0</button>
+        </div>
+      </div>
+      <div class="bankScroll"><div class="bank" id="eqBank"></div></div>
+      <div class="small" id="eqNote">Werte in dB. Mit + und − kannst du von Hand nachjustieren, die grüne Kurve zeigt das Ergebnis.</div>
+    </section>
+
+    <details>
+      <summary>So gehst du vor</summary>
+      <ol>
+        <li>Messmikro über ein USB-Audiointerface mit 48 V Phantomspeisung ans iPad anschließen und oben als Eingang wählen.</li>
+        <li>Ausgang des Interfaces (Kopfhörer oder Line) per Klinkenkabel an den AUX-Eingang des Radios. Bluetooth klappt meist schlechter, weil iOS bei aktivem Mikro auf Telefonqualität umschalten kann.</li>
+        <li>Am Radio EQ auf flach, Loudness und Bass-Boost aus, Fader und Balance so wie du später hörst.</li>
+        <li>Mikro auf Kopfhöhe am Fahrerplatz, Kapsel nach oben. Rosa Rauschen starten und die Lautstärke am Radio so wählen, dass der Pegel etwa zwischen −25 und −10 dBFS liegt.</li>
+        <li>Fünf bis acht Positionen rund um den Kopf messen (links, rechts, etwas vor und zurück). Die App mittelt alle angehakten Messungen.</li>
+        <li>Werte ins Radio übertragen, danach eine Kontrollmessung machen. Alte Messungen dafür abhaken, damit sie nicht mitgemittelt werden.</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary>EQ-Bänder und Regelbereich</summary>
+      <label for="bandsIn">Band-Frequenzen in Hz, mit Komma getrennt</label>
+      <input type="text" id="bandsIn">
+      <div class="row">
+        <div><label for="rangeIn">Regelbereich ± dB</label><input type="number" id="rangeIn" min="1" max="24" step="1"></div>
+        <div><label for="qIn">Filtergüte Q (Schätzung)</label><input type="number" id="qIn" min="0.3" max="6" step="0.1"></div>
+      </div>
+      <button id="btnBands" class="full">Übernehmen</button>
+      <div class="small">Voreingestellt sind die 13 Bänder des Kenwood KDC-BT950DAB. Prüfe Frequenzen und Bereich einmal am Radio und passe sie hier an, falls etwas abweicht.</div>
+    </details>
+  </div>
+</main>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+
+/* ---------- Frequenzraster 20 Hz – 20 kHz, 1/48 Oktave ---------- */
+const F=[]; for(let f=20; f<=20000*1.0001; f*=Math.pow(2,1/48)) F.push(f);
+const NF=F.length;
+
+const DEF={bands:[62.5,100,160,250,400,630,1000,1600,2500,4000,6300,10000,16000],range:9,q:1.4,bass:6,tilt:3,maxBoost:4,smooth:6,level:-18,dur:6};
+let S=Object.assign({},DEF,store.get('ae_settings',{}));
+let meas=store.get('ae_meas',[]);
+let cal=store.get('ae_cal',null);
+let eq=store.get('ae_eq',null);
+if(!eq||eq.length!==S.bands.length) eq=null;
+
+function save(){store.set('ae_settings',S);store.set('ae_meas',meas);store.set('ae_cal',cal);store.set('ae_eq',eq)}
+
+/* ---------- Audio ---------- */
+let ctx=null, stream=null, srcNode=null, analyser=null, proc=null, sink=null;
+let recording=null, recPeak=0, noiseSrc=null, holdPeak=-120, busy=false;
+
+async function enableMic(deviceId){
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+      micStatus('Dieser Browser gibt kein Mikrofon frei. Öffne die Seite in Safari.',true);return;
+    }
+    if(!ctx) ctx=new (window.AudioContext||window.webkitAudioContext)();
+    await ctx.resume();
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    if(srcNode) srcNode.disconnect();
+    if(proc){proc.onaudioprocess=null;proc.disconnect()}
+    const c={echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1};
+    if(deviceId) c.deviceId={exact:deviceId};
+    stream=await navigator.mediaDevices.getUserMedia({audio:c});
+    srcNode=ctx.createMediaStreamSource(stream);
+    analyser=ctx.createAnalyser(); analyser.fftSize=2048;
+    srcNode.connect(analyser);
+    proc=ctx.createScriptProcessor(4096,1,1);
+    if(!sink){sink=ctx.createGain();sink.gain.value=0;sink.connect(ctx.destination)}
+    srcNode.connect(proc); proc.connect(sink);
+    proc.onaudioprocess=e=>{
+      if(!recording) return;
+      const d=e.inputBuffer.getChannelData(0);
+      recording.push(new Float32Array(d));
+      for(let i=0;i<d.length;i++){const a=Math.abs(d[i]); if(a>recPeak) recPeak=a}
+    };
+    await listInputs();
+    $('#btnMic').textContent='Mikrofon aktiv';
+    $('#btnMic').classList.remove('primary');
+    micStatus('Mikrofon bereit. Abtastrate '+ctx.sampleRate+' Hz.');
+    meterLoop();
+  }catch(err){
+    const blocked=err&&(err.name==='NotAllowedError'||err.name==='SecurityError');
+    micStatus(blocked?'Mikrofonzugriff blockiert. In der Claude-Ansicht gibt es kein Mikrofon, lade die Seite auf einen eigenen Webspace mit HTTPS. Läuft sie schon dort, erlaube das Mikrofon in den Safari-Seiteneinstellungen.':'Mikrofon ließ sich nicht starten: '+(err&&err.message||err),true);
+  }
+}
+
+async function listInputs(){
+  const sel=$('#inSel');
+  const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');
+  const cur=stream&&stream.getAudioTracks()[0]&&stream.getAudioTracks()[0].getSettings().deviceId;
+  sel.innerHTML='';
+  devs.forEach((d,i)=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('Eingang '+(i+1));if(d.deviceId===cur)o.selected=true;sel.appendChild(o)});
+  sel.disabled=devs.length<2&&false;
+}
+
+let meterRunning=false;
+function meterLoop(){
+  if(meterRunning) return; meterRunning=true;
+  const buf=new Float32Array(2048);
+  const tick=()=>{
+    if(analyser){
+      analyser.getFloatTimeDomainData(buf);
+      let p=0; for(let i=0;i<buf.length;i++){const a=Math.abs(buf[i]); if(a>p)p=a}
+      const db=p>0?20*Math.log10(p):-120;
+      holdPeak=Math.max(db,holdPeak-0.4);
+      const pct=v=>Math.max(0,Math.min(100,(v+60)/60*100));
+      const bar=$('#meterBar'); bar.style.width=pct(db)+'%';
+      bar.style.background=db>-3?'var(--red)':db>-40?'var(--green)':'var(--grey)';
+      $('#meterHold').style.left=pct(holdPeak)+'%';
+      $('#meterTxt').textContent='Eingangspegel: '+(holdPeak<=-100?'–':fmt(holdPeak,0)+' dBFS');
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function pinkBuffer(sec,levelDb){
+  const fs=ctx.sampleRate,n=Math.round(fs*sec),b=ctx.createBuffer(1,n,fs),d=b.getChannelData(0);
+  let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,ss=0;
+  for(let i=0;i<n;i++){
+    const w=Math.random()*2-1;
+    b0=0.99886*b0+w*0.0555179; b1=0.99332*b1+w*0.0750759; b2=0.969*b2+w*0.153852;
+    b3=0.8665*b3+w*0.3104856; b4=0.55*b4+w*0.5329522; b5=-0.7616*b5-w*0.016898;
+    d[i]=b0+b1+b2+b3+b4+b5+b6+w*0.5362; b6=w*0.115926; ss+=d[i]*d[i];
+  }
+  const k=Math.pow(10,levelDb/20)/Math.SQRT2/Math.sqrt(ss/n);
+  for(let i=0;i<n;i++) d[i]*=k;
+  return b;
+}
+function toggleNoise(){
+  if(!ctx){status('Erst Mikrofon aktivieren.',true);return}
+  if(noiseSrc){stopNoise();return}
+  noiseSrc=ctx.createBufferSource(); noiseSrc.buffer=pinkBuffer(6,S.level); noiseSrc.loop=true;
+  noiseSrc.connect(ctx.destination); noiseSrc.start();
+  $('#btnNoise').textContent='Rauschen stoppen'; $('#btnNoise').classList.add('on');
+}
+function stopNoise(){
+  if(noiseSrc){try{noiseSrc.stop()}catch(e){} noiseSrc.disconnect(); noiseSrc=null}
+  $('#btnNoise').textContent='Rosa Rauschen zum Einpegeln'; $('#btnNoise').classList.remove('on');
+}
+
+/* ---------- Sweep & Messung ---------- */
+function makeSweep(fs,T,levelDb){
+  const f1=20,f2=20000,n=Math.round(T*fs),x=new Float32Array(n);
+  const L=Math.log(f2/f1),K=2*Math.PI*f1*T/L,a=Math.pow(10,levelDb/20);
+  const fi=Math.round(0.05*fs),fo=Math.round(0.01*fs);
+  for(let i=0;i<n;i++){
+    const t=i/fs; let w=1;
+    if(i<fi) w=0.5-0.5*Math.cos(Math.PI*i/fi); else if(i>n-fo) w=0.5-0.5*Math.cos(Math.PI*(n-i)/fo);
+    x[i]=a*w*Math.sin(K*(Math.exp(t*L/T)-1));
+  }
+  return x;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function measure(){
+  if(busy) return;
+  if(!stream){status('Erst Mikrofon aktivieren.',true);return}
+  busy=true; setBusy(true); stopNoise();
+  try{
+    await ctx.resume();
+    const fs=ctx.sampleRate,T=S.dur,lead=0.5,tail=2.5;
+    const sw=makeSweep(fs,T,S.level);
+    const buf=ctx.createBuffer(1,sw.length,fs); buf.getChannelData(0).set(sw);
+    recording=[]; recPeak=0;
+    const src=ctx.createBufferSource(); src.buffer=buf; src.connect(ctx.destination);
+    src.start(ctx.currentTime+lead);
+    const total=lead+T+tail;
+    for(let s=Math.ceil(total);s>0;s--){status('Messung läuft, noch '+s+' s. Bitte ruhig bleiben.');await sleep(Math.min(1000,(total-(Math.ceil(total)-s))*1000))}
+    const chunks=recording; recording=null;
+    let len=0; chunks.forEach(c=>len+=c.length);
+    const rec=new Float32Array(len); let o=0; chunks.forEach(c=>{rec.set(c,o);o+=c.length});
+    const peakDb=recPeak>0?20*Math.log10(recPeak):-120;
+    if(peakDb<-55){status('Kein Messsignal erkannt ('+fmt(peakDb,0)+' dBFS). Prüfe Kabel zum Radio, Quelle AUX und Lautstärke.',true);return}
+    status('Berechne Frequenzgang …');
+    await sleep(30);
+    const r=analyze(rec,sw,fs);
+    const n=meas.length+1;
+    const name=($('#pos').value.trim()||('Messung '+n));
+    meas.push({id:Date.now(),name,on:true,peak:Math.round(peakDb),snr:Math.round(r.snr),db:Array.from(r.db,v=>Math.round(v*100)/100)});
+    let msg='Fertig: '+name+'. Spitzenpegel '+fmt(peakDb,0)+' dBFS, Störabstand etwa '+fmt(r.snr,0)+' dB.';
+    let bad=false;
+    if(peakDb>-1){msg+=' Übersteuert, Radio leiser drehen und neu messen.';bad=true}
+    else if(r.snr<25){msg+=' Wenig Abstand zum Störgeräusch, etwas lauter messen.';bad=true}
+    status(msg,bad);
+    $('#pos').value='';
+    recalc(); save();
+  }catch(err){
+    recording=null; status('Messung fehlgeschlagen: '+(err&&err.message||err),true);
+  }finally{busy=false;setBusy(false)}
+}
+
+function setBusy(b){['#btnMeasure','#btnNoise','#btnMic','#inSel'].forEach(s=>$(s).disabled=b)}
+
+/* ---------- FFT ---------- */
+function fft(re,im,inv){
+  const n=re.length;
+  for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;
+    if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t}}
+  const h=n>>1,cs=new Float64Array(h),sn=new Float64Array(h),sg=inv?1:-1;
+  for(let k=0;k<h;k++){cs[k]=Math.cos(2*Math.PI*k/n);sn[k]=sg*Math.sin(2*Math.PI*k/n)}
+  for(let len=2;len<=n;len<<=1){
+    const half=len>>1,step=n/len;
+    for(let i=0;i<n;i+=len){
+      for(let j=0,w=0;j<half;j++,w+=step){
+        const a=i+j,b=a+half,cr=cs[w],ci=sn[w];
+        const xr=re[b]*cr-im[b]*ci,xi=re[b]*ci+im[b]*cr;
+        re[b]=re[a]-xr;im[b]=im[a]-xi;re[a]+=xr;im[a]+=xi;
+      }
+    }
+  }
+  if(inv){for(let i=0;i<n;i++){re[i]/=n;im[i]/=n}}
+}
+
+function analyze(rec,sw,fs){
+  let N=1; while(N<rec.length+Math.round(0.5*fs)) N<<=1;
+  const rr=new Float64Array(N),ri=new Float64Array(N),xr=new Float64Array(N),xi=new Float64Array(N);
+  rr.set(rec); xr.set(sw);
+  fft(rr,ri,false); fft(xr,xi,false);
+  let mx=0; for(let k=0;k<N;k++){const m=xr[k]*xr[k]+xi[k]*xi[k]; if(m>mx)mx=m}
+  const eps=mx*1e-5;
+  for(let k=0;k<N;k++){
+    const m=xr[k]*xr[k]+xi[k]*xi[k]+eps;
+    const a=rr[k],b=ri[k];
+    rr[k]=(a*xr[k]+b*xi[k])/m; ri[k]=(b*xr[k]-a*xi[k])/m;
+  }
+  fft(rr,ri,true);
+  let pk=0,pv=0; for(let i=0;i<N;i++){const a=Math.abs(rr[i]); if(a>pv){pv=a;pk=i}}
+  // Fenster: 3 ms vor dem Peak, 250 ms Länge
+  const pre=Math.round(0.003*fs),L=Math.round(0.25*fs),fall=Math.round(L*0.4);
+  let M=1; while(M<L*4) M<<=1;
+  const wr=new Float64Array(M),wi=new Float64Array(M);
+  for(let j=0;j<L;j++){
+    let w=1;
+    if(j<pre) w=0.5-0.5*Math.cos(Math.PI*j/pre);
+    else if(j>L-fall) w=0.5+0.5*Math.cos(Math.PI*(j-(L-fall))/fall);
+    wr[j]=rr[((pk-pre+j)%N+N)%N]*w;
+  }
+  fft(wr,wi,false);
+  const P=new Float64Array(M/2+1); for(let k=0;k<=M/2;k++) P[k]=wr[k]*wr[k]+wi[k]*wi[k];
+  const cum=new Float64Array(P.length+1); for(let k=0;k<P.length;k++) cum[k+1]=cum[k]+P[k];
+  const df=fs/M,db=new Float64Array(NF),frac=24;
+  for(let i=0;i<NF;i++){
+    const lo=F[i]*Math.pow(2,-1/(2*frac)),hi=F[i]*Math.pow(2,1/(2*frac));
+    let k0=Math.ceil(lo/df),k1=Math.floor(hi/df);
+    let p;
+    if(k1<k0){const kk=Math.round(F[i]/df);p=P[Math.min(kk,P.length-1)]}
+    else{k1=Math.min(k1,P.length-1);p=(cum[k1+1]-cum[k0])/(k1-k0+1)}
+    db[i]=10*Math.log10(p+1e-30);
+  }
+  // Störabstand: Ruhe vor dem Sweep gegen Sweep-Anteil
+  const nq=Math.round(0.35*fs); let nsum=0; for(let i=0;i<nq&&i<rec.length;i++) nsum+=rec[i]*rec[i];
+  let ssum=0,sc=0; const s0=Math.round(0.6*fs),s1=Math.min(rec.length,s0+sw.length); for(let i=s0;i<s1;i++){ssum+=rec[i]*rec[i];sc++}
+  const snr=10*Math.log10((ssum/Math.max(1,sc))/((nsum/Math.max(1,nq))+1e-20));
+  return {db,snr};
+}
+
+/* ---------- Kalibrierung ---------- */
+function parseCal(text){
+  const pts=[];
+  for(const raw of text.split(/\r?\n/)){
+    const line=raw.trim(); if(!line||/^[*#"'a-z]/i.test(line)&&!/^\s*[\d.+-]/.test(line)) continue;
+    let tok=line.split(/[\s;]+/).filter(Boolean);
+    if(tok.length<2&&line.includes(',')) tok=line.split(',');
+    const nums=tok.map(t=>parseFloat(t.replace(',','.'))).filter(v=>isFinite(v));
+    if(nums.length>=2&&nums[0]>=1&&nums[0]<=100000) pts.push([nums[0],nums[1]]);
+  }
+  pts.sort((a,b)=>a[0]-b[0]);
+  return pts.length>=5?{f:pts.map(p=>p[0]),db:pts.map(p=>p[1])}:null;
+}
+function calAt(f){
+  if(!cal) return 0;
+  const cf=cal.f,cd=cal.db;
+  if(f<=cf[0]) return cd[0]; if(f>=cf[cf.length-1]) return cd[cd.length-1];
+  let lo=0,hi=cf.length-1; while(hi-lo>1){const m=(lo+hi)>>1; if(cf[m]<=f)lo=m;else hi=m}
+  const t=Math.log(f/cf[lo])/Math.log(cf[hi]/cf[lo]); return cd[lo]+t*(cd[hi]-cd[lo]);
+}
+let calGrid=null;
+function buildCalGrid(){calGrid=cal?F.map(calAt):null}
+
+/* ---------- Kurven ---------- */
+function smoothGrid(a,frac){
+  const h=Math.max(0,Math.round(48/(2*frac))),out=new Float64Array(NF);
+  for(let i=0;i<NF;i++){let s=0,c=0;for(let j=Math.max(0,i-h);j<=Math.min(NF-1,i+h);j++){s+=Math.pow(10,a[j]/10);c++}out[i]=10*Math.log10(s/c)}
+  return out;
+}
+function curveOf(m){const o=new Float64Array(NF);for(let i=0;i<NF;i++)o[i]=m.db[i]-(calGrid?calGrid[i]:0);return smoothGrid(o,S.smooth)}
+function target(f){
+  const shelf=S.bass/(1+Math.pow(f/110,2));
+  const tilt=f>1000?-S.tilt*Math.log(f/1000)/Math.log(20):0;
+  return shelf+tilt;
+}
+const TG=F.map(target);
+function refreshTarget(){for(let i=0;i<NF;i++)TG[i]=target(F[i])}
+function averageRaw(){
+  const on=meas.filter(m=>m.on); if(!on.length) return null;
+  const acc=new Float64Array(NF);
+  on.forEach(m=>{const c=curveOf(m);for(let i=0;i<NF;i++)acc[i]+=Math.pow(10,c[i]/10)});
+  return acc.map(v=>10*Math.log10(v/on.length));
+}
+function offsetFor(c){let s=0,n=0;for(let i=0;i<NF;i++)if(F[i]>=300&&F[i]<=3000){s+=c[i]-TG[i];n++}return n?s/n:0}
+
+function peakDb(f,f0,g,Q){
+  if(!g) return 0;
+  const fs=48000,A=Math.pow(10,g/40),w0=2*Math.PI*f0/fs,al=Math.sin(w0)/(2*Q),c=Math.cos(w0);
+  const b0=1+al*A,b1=-2*c,b2=1-al*A,a0=1+al/A,a1=-2*c,a2=1-al/A;
+  const w=2*Math.PI*f/fs,c1=Math.cos(w),s1=Math.sin(w),c2=Math.cos(2*w),s2=Math.sin(2*w);
+  const nr=b0+b1*c1+b2*c2,ni=-(b1*s1+b2*s2),dr=a0+a1*c1+a2*c2,di=-(a1*s1+a2*s2);
+  return 10*Math.log10((nr*nr+ni*ni)/(dr*dr+di*di));
+}
+function eqResp(f,g){let s=0;for(let k=0;k<S.bands.length;k++)s+=peakDb(f,S.bands[k],g[k],S.q);return s}
+
+function solveEQ(avg){
+  const nb=S.bands.length,R=S.range,maxB=Math.min(S.maxBoost,R);
+  const regions=S.bands.map(fc=>{const idx=[];for(let i=0;i<NF;i++)if(F[i]>=fc*Math.pow(2,-0.25)&&F[i]<=fc*Math.pow(2,0.25))idx.push(i);return idx});
+  const err=avg.map((v,i)=>TG[i]-v);
+  const g=new Array(nb).fill(0);
+  for(let it=0;it<80;it++){
+    for(let k=0;k<nb;k++){
+      const idx=regions[k]; if(!idx.length) continue;
+      let d=0; idx.forEach(i=>{d+=err[i]-eqResp(F[i],g)}); d/=idx.length;
+      g[k]=Math.max(-R,Math.min(maxB,g[k]+0.5*d));
+    }
+  }
+  return g.map(v=>{const r=Math.round(v);return r===0?0:r});
+}
+
+function recalc(){
+  const raw=averageRaw();
+  if(raw){const avg=raw.map((v,_,a)=>v);const o=offsetFor(avg);eq=solveEQ(avg.map(v=>v-o))}
+  save(); render();
+}
+
+/* ---------- Darstellung ---------- */
+function fmt(v,d){return (Math.round(v*Math.pow(10,d))/Math.pow(10,d)).toString().replace('-','−').replace('.',',')}
+function fLabel(f){if(f>=1000){return (f/1000).toString().replace('.',',')+'k'}return f.toString().replace('.',',')}
+function micStatus(t,bad){const el=$('#micStatus');el.textContent=t;el.classList.toggle('warn',!!bad)}
+function status(t,bad){const el=$('#status');el.textContent=t;el.classList.toggle('warn',!!bad)}
+
+function draw(){
+  const cv=$('#plot'),r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  if(!r.width) return;
+  cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr);
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+  const css=getComputedStyle(document.documentElement),col=n=>css.getPropertyValue(n).trim();
+  const W=r.width,H=r.height,pl=38,pr=10,pt=10,pb=24,yMin=-18,yMax=18;
+  const x=f=>pl+Math.log10(f/20)/3*(W-pl-pr);
+  const y=d=>pt+(yMax-Math.max(yMin-2,Math.min(yMax+2,d)))/(yMax-yMin)*(H-pt-pb);
+  g.clearRect(0,0,W,H);
+  g.font='500 12px Barlow, system-ui, sans-serif'; g.fillStyle=col('--muted'); g.strokeStyle=col('--line'); g.lineWidth=1;
+  [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{
+    const X=Math.round(x(f))+.5; g.beginPath(); g.moveTo(X,pt); g.lineTo(X,H-pb); g.stroke();
+    g.textAlign=f===20?'left':f===20000?'right':'center'; g.fillText(fLabel(f),X,H-7);
+  });
+  for(let d=yMin;d<=yMax;d+=6){
+    const Y=Math.round(y(d))+.5; g.globalAlpha=d===0?1:.6; g.beginPath(); g.moveTo(pl,Y); g.lineTo(W-pr,Y); g.stroke(); g.globalAlpha=1;
+    g.textAlign='right'; g.fillText((d>0?'+':'')+String(d).replace('-','−'),pl-6,Y+4);
+  }
+  g.save(); g.beginPath(); g.rect(pl,pt,W-pl-pr,H-pt-pb); g.clip();
+  const line=(arr,c,w,dash,alpha)=>{g.strokeStyle=c;g.lineWidth=w;g.setLineDash(dash||[]);g.globalAlpha=alpha||1;g.beginPath();
+    for(let i=0;i<NF;i++){const X=x(F[i]),Y=y(arr[i]);i?g.lineTo(X,Y):g.moveTo(X,Y)}g.stroke();g.setLineDash([]);g.globalAlpha=1};
+  line(TG,col('--blue'),1.6,[6,4]);
+  const raw=averageRaw();
+  if(raw){
+    const o=offsetFor(raw);
+    meas.filter(m=>m.on).forEach(m=>{const c=curveOf(m);line(c.map(v=>v-o),col('--grey'),1,null,.55)});
+    const avg=raw.map(v=>v-o);
+    line(avg,col('--amber'),2.6);
+    if(eq&&eq.some(v=>v)) line(avg.map((v,i)=>v+eqResp(F[i],eq)),col('--green'),2);
+  }
+  g.restore();
+  if(!raw){g.fillStyle=col('--muted');g.textAlign='center';g.font='500 15px Barlow, system-ui, sans-serif';
+    g.fillText(meas.length?'Keine Messung ausgewählt':'Noch keine Messung. Mikrofon aktivieren und die erste Position messen.',(pl+W-pr)/2,(pt+H-pb)/2)}
+}
+
+function renderEQ(){
+  const bank=$('#eqBank'); bank.innerHTML=''; bank.style.setProperty('--nb',S.bands.length);
+  const R=S.range;
+  S.bands.forEach((f,k)=>{
+    const v=eq?eq[k]:0;
+    const d=document.createElement('div'); d.className='band';
+    const h=Math.abs(v)/R*50;
+    d.innerHTML='<div class="v num '+(v>0?'pos':v<0?'neg':'')+'">'+(v>0?'+':'')+String(v).replace('-','−')+'</div>'+
+      '<div class="track"><i style="'+(v>=0?'bottom:50%;':'top:50%;')+'height:'+h+'%;background:'+(v>0?'var(--amber)':'var(--blue)')+'"></i></div>'+
+      '<div class="b"><button aria-label="'+fLabel(f)+' Hz absenken">−</button><button aria-label="'+fLabel(f)+' Hz anheben">+</button></div>'+
+      '<div class="f">'+fLabel(f)+'</div>';
+    const [m,p]=d.querySelectorAll('button');
+    m.onclick=()=>adj(k,-1); p.onclick=()=>adj(k,1);
+    bank.appendChild(d);
+  });
+}
+function adj(k,s){if(!eq)eq=new Array(S.bands.length).fill(0);eq[k]=Math.max(-S.range,Math.min(S.range,eq[k]+s));save();renderEQ();draw()}
+
+function renderList(){
+  const ul=$('#measList'); ul.innerHTML='';
+  meas.forEach((m,i)=>{
+    const li=document.createElement('li');
+    li.innerHTML='<input type="checkbox" '+(m.on?'checked':'')+' aria-label="'+m.name+' in Mittelwert einbeziehen"><span></span><button>Löschen</button>';
+    li.querySelector('span').innerHTML='';
+    const sp=li.querySelector('span'); sp.textContent=m.name;
+    const sm=document.createElement('small'); sm.textContent='Spitze '+fmt(m.peak,0)+' dBFS, Störabstand '+fmt(m.snr,0)+' dB'; sp.appendChild(sm);
+    li.querySelector('input').onchange=e=>{m.on=e.target.checked;recalc()};
+    li.querySelector('button').onclick=()=>{meas.splice(i,1);recalc()};
+    ul.appendChild(li);
+  });
+  $('#btnClear').hidden=!meas.length;
+}
+
+function renderControls(){
+  $('#lvl').value=S.level; $('#lvlOut').textContent=fmt(S.level,0)+' dBFS';
+  $('#dur').value=String(S.dur);
+  $('#bass').value=S.bass; $('#bassOut').textContent='+'+fmt(S.bass,1)+' dB';
+  $('#tilt').value=S.tilt; $('#tiltOut').textContent='−'+fmt(S.tilt,1)+' dB';
+  $('#maxBoost').value=S.maxBoost; $('#maxBoostOut').textContent='+'+S.maxBoost+' dB';
+  $('#smooth').value=String(S.smooth);
+  $('#bandsIn').value=S.bands.join(', '); $('#rangeIn').value=S.range; $('#qIn').value=S.q;
+  $('#calInfo').textContent=cal?('Geladen: '+(cal.name||'Kalibrierdatei')+' ('+cal.f.length+' Punkte)'):'Keine Kalibrierung geladen';
+}
+function render(){renderControls();renderList();renderEQ();draw()}
+
+/* ---------- Events ---------- */
+$('#btnMic').onclick=()=>enableMic();
+$('#inSel').onchange=e=>enableMic(e.target.value);
+$('#btnNoise').onclick=toggleNoise;
+$('#btnMeasure').onclick=measure;
+$('#btnClear').onclick=()=>{if(confirm('Alle Messungen löschen?')){meas=[];eq=null;recalc()}};
+$('#lvl').oninput=e=>{S.level=+e.target.value;$('#lvlOut').textContent=fmt(S.level,0)+' dBFS';if(noiseSrc){stopNoise();toggleNoise()}save()};
+$('#dur').onchange=e=>{S.dur=+e.target.value;save()};
+const tgt=()=>{refreshTarget();recalc()};
+$('#bass').oninput=e=>{S.bass=+e.target.value;$('#bassOut').textContent='+'+fmt(S.bass,1)+' dB';tgt()};
+$('#tilt').oninput=e=>{S.tilt=+e.target.value;$('#tiltOut').textContent='−'+fmt(S.tilt,1)+' dB';tgt()};
+$('#preFlat').onclick=()=>{S.bass=0;S.tilt=0;tgt()};
+$('#preCar').onclick=()=>{S.bass=6;S.tilt=3;tgt()};
+$('#maxBoost').oninput=e=>{S.maxBoost=+e.target.value;$('#maxBoostOut').textContent='+'+S.maxBoost+' dB';recalc()};
+$('#smooth').onchange=e=>{S.smooth=+e.target.value;recalc()};
+$('#btnAuto').onclick=()=>{if(!averageRaw()){status('Für eine Berechnung braucht es mindestens eine ausgewählte Messung.',true);return}recalc()};
+$('#btnZero').onclick=()=>{eq=new Array(S.bands.length).fill(0);save();renderEQ();draw()};
+$('#btnBands').onclick=()=>{
+  const b=$('#bandsIn').value.split(/[,;\s]+/).map(v=>parseFloat(v)).filter(v=>isFinite(v)&&v>=10&&v<=22000).sort((a,b)=>a-b);
+  const r=parseInt($('#rangeIn').value,10),q=parseFloat($('#qIn').value);
+  if(b.length<3){status('Bitte mindestens drei gültige Band-Frequenzen angeben.',true);return}
+  S.bands=b; if(r>=1&&r<=24)S.range=r; if(q>=0.3&&q<=6)S.q=q; S.maxBoost=Math.min(S.maxBoost,S.range);
+  $('#maxBoost').max=S.range; eq=null; recalc(); status('EQ-Bänder übernommen.');
+};
+$('#calFile').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const c=parseCal(await f.text());
+  if(!c){status('In der Datei wurden keine Wertepaare aus Frequenz und dB gefunden.',true);return}
+  cal={name:f.name,f:c.f,db:c.db}; buildCalGrid(); recalc(); status('Kalibrierung geladen, alle Messungen werden damit korrigiert.');
+};
+window.addEventListener('resize',draw);
+if(window.ResizeObserver) new ResizeObserver(()=>draw()).observe($('#plot'));
+try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{draw()})}catch(e){}
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(draw);
+
+$('#maxBoost').max=S.range;
+buildCalGrid(); refreshTarget(); render();
+if(meas.length) status(meas.length+' gespeicherte Messung'+(meas.length>1?'en':'')+' geladen.');
+})();
+</script>
+</body>
+</html>
